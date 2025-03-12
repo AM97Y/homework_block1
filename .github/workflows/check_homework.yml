@@ -35,7 +35,9 @@ jobs:
         id: run-homework-checker
         run: |
           echo "Running homework checker..."
-          python homework_checker.py > result.log
+
+          python homework_checker.py >> result.log
+
 
           # Проверка завершения работы скрипта
           if [ $? -ne 0 ]; then
@@ -56,6 +58,20 @@ jobs:
             echo "Error: result.log does not exist" >> result.log
             exit 1
           fi
+
+          # Проверяем, что файл result.log не пустой
+          if [ ! -s result.log ]; then
+            echo "Error: result.log is empty" >> result.log
+            exit 1
+          fi
+
+          echo "result.log is not empty, proceeding..."
+
+      - name: Debug result.log content
+        run: |
+          echo "Contents of result.log:"
+          cat result.log || echo "Failed to read result.log"
+
 
           # Проверяем, что файл result.log не пустой
           if [ ! -s result.log ]; then
