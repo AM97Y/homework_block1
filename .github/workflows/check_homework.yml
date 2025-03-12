@@ -26,9 +26,15 @@ jobs:
           if [ -f requirements.txt ]; then
             pip install -r requirements.txt  # Установка зависимостей
           fi
+
       - name: Create homework_checker.py from secret
         run: |
           echo "${{ secrets.HOMEWORK_CHECKER }}" > homework_checker.py
+          
+      - name: Debug homework_checker.py file content
+        run: |
+          echo "Contents of homework_checker.py:"
+          cat homework_checker.py
 
       - name: Check for similar open PRs
         id: check-similar-prs
@@ -61,7 +67,28 @@ jobs:
       - name: Run homework checker
         id: run-homework-checker
         run: |
+          echo "Running homework checker..."
           python homework_checker.py > result.log
+          
+          # Проверка, что скрипт завершился без ошибок
+          if [ $? -ne 0 ]; then
+            echo "Homework checker failed!" >> result.log
+            exit 1
+          fi
+
+      - name: Check if result.log is empty
+        run: |
+          # Проверяем, что файл result.log не пустой
+          if [ ! -s result.log ]; then
+            echo "Error: result.log is empty" >> result.log
+            exit 1
+          fi
+
+      - name: Debug the content of result.log
+        run: |
+          # Проверяем содержимое result.log
+          echo "Contents of result.log:"
+          cat result.log
 
       - name: Add feedback as a comment on PR
         uses: actions/github-script@v6
