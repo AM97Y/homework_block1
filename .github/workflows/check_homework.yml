@@ -1,39 +1,92 @@
-- name: Run homework checker
-  id: run-homework-checker
-  run: |
-    echo "Running homework checker..."
-    python homework_checker.py > result.log
+name: Check Homework
 
-    # Проверка завершения работы скрипта
-    if [ $? -ne 0 ]; then
-      echo "Homework checker failed!" >> result.log
-      exit 1
-    fi
+on:
+  pull_request:
+    branches:
+      - main
 
-    # Проверяем, что файл result.log не пустой
-    if [ ! -s result.log ]; then
-      echo "Error: result.log is empty after running homework checker" >> result.log
-      exit 1
-    fi
+permissions:
+  pull-requests: write
 
-- name: Debug result.log content
-  run: |
-    # Проверяем, существует ли файл result.log
-    if [ ! -f result.log ]; then
-      echo "Error: result.log does not exist"
-      exit 1
-    fi
+jobs:
+  check_code:
+    runs-on: ubuntu-latest
 
-    # Выводим содержимое result.log для отладки
-    echo "Contents of result.log:"
-    cat result.log || echo "Failed to read result.log"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-- name: Check if result.log is empty
-  run: |
-    # Проверяем, что файл result.log не пустой
-    if [ ! -s result.log ]; then
-      echo "Error: result.log is empty" >> result.log
-      exit 1
-    fi
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
 
-    echo "result.log is not empty, proceeding..."
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+
+      - name: Create homework_checker.py from secret
+        run: |
+          echo "${{ secrets.HOMEWORK_CHECKER }}" > homework_checker.py
+
+      - name: Run homework checker
+        id: run-homework-checker
+        run: |
+          echo "Running homework checker..."
+          python homework_checker.py >> result.log
+
+          # Проверка завершения работы скрипта
+          if [ $? -ne 0 ]; then
+            echo "Homework checker failed!" >> result.log
+            exit 1
+          fi
+
+          # Проверяем, что файл result.log не пустой
+          if [ ! -s result.log ]; then
+            echo "Error: result.log is empty after running homework checker" >> result.log
+            exit 1
+          fi
+
+      - name: Check if result.log is empty
+        run: |
+          # Проверяем, существует ли файл result.log
+          if [ ! -f result.log ]; then
+            echo "Error: result.log does not exist" >> result.log
+            exit 1
+          fi
+
+          # Проверяем, что файл result.log не пустой
+          if [ ! -s result.log ]; then
+            echo "Error: result.log is empty" >> result.log
+            exit 1
+          fi
+
+          echo "result.log is not empty, proceeding..."
+
+      - name: Debug result.log content
+        run: |
+          echo "Contents of result.log:"
+          cat result.log || echo "Failed to read result.log"
+
+      - name: Add feedback as a comment on PR
+        uses: actions/github-script@v6
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          script: |
+            const fs = require('fs');
+            const resultLog = fs.readFileSync('${{ github.workspace }}/result.log', 'utf8');
+            const commentBody = `
+            ### Homework Check Result:
+
+            \`\`\`
+            ${resultLog}
+            \`\`\`
+            `;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody
+            })
