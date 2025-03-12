@@ -29,7 +29,7 @@ jobs:
 
       - name: Create homework_checker.py from secret
         run: |
-          echo "${{ secrets.HOMEWORK_CHECKER }}" > homework_checker.py
+          echo "${{ secrets.HOMEWORK_CHECKER }}" >> homework_checker.py
 
       - name: Run homework checker
         id: run-homework-checker
